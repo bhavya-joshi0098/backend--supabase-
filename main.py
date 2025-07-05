@@ -316,6 +316,7 @@ def api_admin_create_teacher():
 
 @app.route('/api/admin/users')
 @login_required
+@role_required(['admin'])
 def api_admin_list_users():
     """Get all users (admin only)"""
     try:
