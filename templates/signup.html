@@ -1,0 +1,89 @@
+{% extends 'base.html' %} {% block title %} Sign Up {% endblock %} {% block
+content %}
+<div class="d-flex align-items-center justify-content-center vh-100">
+  <div class="col-md-6 col-lg-4">
+    <div class="card shadow-sm p-4">
+      
+      <div>
+        <h3><b>Create Account</b></h3>
+        <p class="text-muted">Join the Quiz Platform - All details are 100% safe and encrypted</p>
+      </div>
+      
+      <form method="post">
+        <!-- Email -->
+        <div class="mb-3">
+          <label for="email" class="form-label">Email address</label>
+          <input
+            type="email"
+            name="email"
+            class="form-control"
+            id="email"
+            placeholder="you@example.com"
+            required
+          />
+        </div>
+
+        <!-- Full Name -->
+        <div class="mb-3">
+          <label for="name" class="form-label">Full Name</label>
+          <input
+            type="text"
+            name="name"
+            class="form-control"
+            id="name"
+            placeholder="John Doe"
+            required
+          />
+        </div>
+
+        <!-- Username -->
+        <div class="mb-3">
+          <label for="username" class="form-label">Username</label>
+          <input
+            type="text"
+            name="username"
+            class="form-control"
+            id="username"
+            placeholder="john_doe"
+            required
+          />
+        </div>
+
+        <!-- Role Selection -->
+        <div class="mb-3">
+          <label for="role" class="form-label">Role</label>
+          <select name="role" class="form-select" id="role" required>
+            <option value="student">Student</option>
+            <option value="teacher">Teacher</option>
+            <option value="admin">Admin</option>
+          </select>
+          <small class="form-text text-muted">
+            Choose your role: Students take quizzes, Teachers create quizzes, Admins manage everything
+          </small>
+        </div>
+
+        <!-- Password -->
+        <div class="mb-3">
+          <label for="password" class="form-label">Password</label>
+          <input
+            type="password"
+            name="password"
+            class="form-control"
+            id="password"
+            placeholder="••••••••"
+            required
+          />
+        </div>
+
+        <!-- Submit Button -->
+        <div class="d-grid">
+          <button type="submit" class="btn btn-success">Sign Up</button>
+        </div>
+        <p class="mt-2">Already have an account?
+          <a href="/login">Login</a>
+        </p>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

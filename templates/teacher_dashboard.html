@@ -1,0 +1,265 @@
+{% extends 'base.html' %}
+{% block title %}Teacher Dashboard{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="section-title">Welcome, {{ user.name }}!</h2>
+            <p class="text-muted">Teacher Dashboard - Manage your quizzes and view student results</p>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">{{ quizzes|length }}</h5>
+                    <p class="card-text">Total Quizzes</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">0</h5>
+                    <p class="card-text">Active Students</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">0</h5>
+                    <p class="card-text">Total Submissions</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create New Quiz Button -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createQuizModal">
+                <i class="fas fa-plus"></i> Create New Quiz
+            </button>
+        </div>
+    </div>
+
+    <!-- Quizzes List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Your Quizzes</h5>
+                </div>
+                <div class="card-body">
+                    {% if quizzes %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Description</th>
+                                        <th>Questions</th>
+                                        <th>Created</th>
+                                        <th>Link</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for quiz in quizzes %}
+                                    <tr>
+                                        <td>{{ quiz.title }}</td>
+                                        <td>{{ quiz.description[:50] }}...</td>
+                                        <td>{{ quiz.question_count }}</td>
+                                        <td>{{ quiz.created_at }}</td>
+                                        <td>
+                                            <code>{{ quiz.link_token }}</code>
+                                            <button class="btn btn-sm btn-outline-primary ms-2" onclick="copyLink('{{ quiz.link_token }}')">
+                                                <i class="fas fa-copy"></i>
+                                            </button>
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-info" onclick="viewResults('{{ quiz.id }}')">
+                                                <i class="fas fa-chart-bar"></i> Results
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center">No quizzes created yet. Create your first quiz!</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Quiz Modal -->
+<div class="modal fade" id="createQuizModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create New Quiz</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createQuizForm">
+                    <div class="mb-3">
+                        <label for="quizTitle" class="form-label">Quiz Title</label>
+                        <input type="text" class="form-control" id="quizTitle" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="quizDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="quizDescription" rows="3"></textarea>
+                    </div>
+                    <div id="questionsContainer">
+                        <h6>Questions</h6>
+                        <div class="question-item border p-3 mb-3">
+                            <div class="mb-3">
+                                <label class="form-label">Question 1</label>
+                                <input type="text" class="form-control question-text" placeholder="Enter question text" required>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <input type="text" class="form-control mb-2" placeholder="Option A" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" class="form-control mb-2" placeholder="Option B" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" class="form-control mb-2" placeholder="Option C" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" class="form-control mb-2" placeholder="Option D" required>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Correct Answer</label>
+                                <select class="form-select correct-answer">
+                                    <option value="A">A</option>
+                                    <option value="B">B</option>
+                                    <option value="C">C</option>
+                                    <option value="D">D</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary" onclick="addQuestion()">
+                        <i class="fas fa-plus"></i> Add Question
+                    </button>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createQuiz()">Create Quiz</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let questionCount = 1;
+
+function addQuestion() {
+    questionCount++;
+    const container = document.getElementById('questionsContainer');
+    const questionDiv = document.createElement('div');
+    questionDiv.className = 'question-item border p-3 mb-3';
+    questionDiv.innerHTML = `
+        <div class="mb-3">
+            <label class="form-label">Question ${questionCount}</label>
+            <input type="text" class="form-control question-text" placeholder="Enter question text" required>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <input type="text" class="form-control mb-2" placeholder="Option A" required>
+            </div>
+            <div class="col-md-6">
+                <input type="text" class="form-control mb-2" placeholder="Option B" required>
+            </div>
+            <div class="col-md-6">
+                <input type="text" class="form-control mb-2" placeholder="Option C" required>
+            </div>
+            <div class="col-md-6">
+                <input type="text" class="form-control mb-2" placeholder="Option D" required>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Correct Answer</label>
+            <select class="form-select correct-answer">
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+                <option value="D">D</option>
+            </select>
+        </div>
+        <button type="button" class="btn btn-sm btn-danger" onclick="this.parentElement.remove()">
+            <i class="fas fa-trash"></i> Remove
+        </button>
+    `;
+    container.appendChild(questionDiv);
+}
+
+function createQuiz() {
+    const title = document.getElementById('quizTitle').value;
+    const description = document.getElementById('quizDescription').value;
+    
+    const questions = [];
+    const questionItems = document.querySelectorAll('.question-item');
+    
+    questionItems.forEach((item, index) => {
+        const questionText = item.querySelector('.question-text').value;
+        const options = Array.from(item.querySelectorAll('input[type="text"]')).map(input => input.value);
+        const correctAnswer = item.querySelector('.correct-answer').value;
+        
+        questions.push({
+            question_text: questionText,
+            options: options,
+            correct_answer: correctAnswer
+        });
+    });
+    
+    fetch('/api/quiz/create', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            title: title,
+            description: description,
+            questions: questions
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Quiz created successfully!');
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error creating quiz');
+    });
+}
+
+function copyLink(token) {
+    const link = `${window.location.origin}/quiz/${token}`;
+    navigator.clipboard.writeText(link).then(() => {
+        alert('Quiz link copied to clipboard!');
+    });
+}
+
+function viewResults(quizId) {
+    // Implement results view
+    alert('Results view coming soon!');
+}
+</script>
+{% endblock %} 

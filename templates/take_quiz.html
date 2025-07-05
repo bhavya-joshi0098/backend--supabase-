@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ quiz.title }} - Quiz Platform</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .question-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .option-btn {
+            width: 100%;
+            text-align: left;
+            padding: 12px 15px;
+            margin: 5px 0;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: white;
+            transition: all 0.3s ease;
+        }
+        .option-btn:hover {
+            border-color: #007bff;
+            background: #f8f9fa;
+        }
+        .option-btn.selected {
+            border-color: #007bff;
+            background: #e3f2fd;
+        }
+        .timer {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #dc3545;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 25px;
+            font-weight: bold;
+            z-index: 1000;
+        }
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: #007bff;
+            z-index: 1001;
+            transition: width 1s linear;
+        }
+        .quiz-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 0;
+            margin-bottom: 30px;
+        }
+        .question-number {
+            background: #007bff;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+        }
+        .security-warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .security-icon {
+            color: #856404;
+            margin-right: 10px;
+        }
+        .fullscreen-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            text-align: center;
+        }
+        .fullscreen-overlay h2 {
+            color: #dc3545;
+            margin-bottom: 20px;
+        }
+        .fullscreen-overlay .btn {
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Fullscreen Overlay -->
+    <div id="fullscreenOverlay" class="fullscreen-overlay">
+        <div>
+            <h2><i class="fas fa-exclamation-triangle"></i> Full-Screen Required</h2>
+            <p>This quiz must be taken in full-screen mode for security purposes.</p>
+            <p>Please click the button below to enter full-screen mode and start the quiz.</p>
+            <button class="btn btn-primary btn-lg" onclick="enterFullscreen()">
+                <i class="fas fa-expand"></i> Enter Full-Screen Mode
+            </button>
+            <br>
+            <button class="btn btn-secondary" onclick="window.location.href='/dashboard'">
+                <i class="fas fa-arrow-left"></i> Return to Dashboard
+            </button>
+        </div>
+    </div>
+
+    <div class="progress-bar" id="progressBar"></div>
+    <div class="timer" id="timer">
+        <i class="fas fa-clock"></i> <span id="timeLeft">Loading...</span>
+    </div>
+
+    <div class="quiz-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="mb-2">{{ quiz.title }}</h1>
+                    <p class="mb-0">{{ quiz.description }}</p>
+                    <small>Created by: {{ quiz.created_by }}</small>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="d-flex justify-content-end align-items-center">
+                        <div class="me-3">
+                            <strong>Questions:</strong> <span id="questionCount">{{ quiz.questions|length }}</span>
+                        </div>
+                        <div>
+                            <strong>Progress:</strong> <span id="progress">0/{{ quiz.questions|length }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Security Warning -->
+        <div class="security-warning">
+            <h5><i class="fas fa-shield-alt security-icon"></i> Security Notice</h5>
+            <p class="mb-2"><strong>Important:</strong> This quiz is monitored for academic integrity. Please note:</p>
+            <ul class="mb-0">
+                <li><i class="fas fa-exclamation-triangle text-warning"></i> <strong>Full-Screen Mode:</strong> The quiz must remain in full-screen mode throughout the test.</li>
+                <li><i class="fas fa-exclamation-triangle text-warning"></i> <strong>Tab Switching:</strong> Switching to other tabs or applications will automatically submit your quiz.</li>
+                <li><i class="fas fa-exclamation-triangle text-warning"></i> <strong>Window Minimizing:</strong> Minimizing the browser window will trigger auto-submission.</li>
+                <li><i class="fas fa-exclamation-triangle text-warning"></i> <strong>Browser Navigation:</strong> Using browser back/forward buttons or refreshing the page will submit your quiz.</li>
+            </ul>
+        </div>
+
+        <form id="quizForm">
+            <div id="questionsContainer">
+                {% for question in quiz.questions %}
+                {% set question_index = loop.index0 %}
+                <div class="question-card" data-question="{{ question_index }}">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="question-number">{{ loop.index }}</div>
+                        <h5 class="mb-0">{{ question.question_text }}</h5>
+                    </div>
+                    <div class="options">
+                        {% for option in question.options %}
+                        <button type="button" class="option-btn" 
+                                data-question="{{ question_index }}" 
+                                data-option="{{ option }}">
+                            {{ option }}
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="text-center mb-5">
+                <button type="submit" class="btn btn-success btn-lg px-5" id="submitBtn">
+                    <i class="fas fa-paper-plane"></i> Submit Quiz
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Result Modal -->
+    <div class="modal fade" id="resultModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Quiz Results</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="resultContent">
+                    <!-- Results will be displayed here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <a href="/dashboard" class="btn btn-primary">Go to Dashboard</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- eslint-disable -->
+    <script>
+        const quizData = JSON.parse('{{ quiz|tojson|safe }}');
+        const token = '{{ token }}';
+        let answers = {};
+        let timeLeft = 3600; // 1 hour default
+        let timerInterval;
+        let quizStarted = false;
+        let fullscreenWarnings = 0;
+        let tabSwitchWarnings = 0;
+
+        // Initialize quiz
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if fullscreen is supported
+            if (!document.fullscreenEnabled && !document.webkitFullscreenEnabled && !document.mozFullScreenEnabled) {
+                alert('Full-screen mode is not supported in your browser. Please use a modern browser.');
+                window.location.href = '/dashboard';
+                return;
+            }
+            
+            // Show fullscreen overlay initially
+            document.getElementById('fullscreenOverlay').style.display = 'flex';
+        });
+
+        function enterFullscreen() {
+            const elem = document.documentElement;
+            
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen();
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen();
+            } else if (elem.mozRequestFullScreen) {
+                elem.mozRequestFullScreen();
+            } else if (elem.msRequestFullscreen) {
+                elem.msRequestFullscreen();
+            }
+        }
+
+        function exitFullscreen() {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.mozCancelFullScreen) {
+                document.mozCancelFullScreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
+        }
+
+        function isFullscreen() {
+            return !!(document.fullscreenElement || document.webkitFullscreenElement || 
+                     document.mozFullScreenElement || document.msFullscreenElement);
+        }
+
+        function startQuiz() {
+            quizStarted = true;
+            document.getElementById('fullscreenOverlay').style.display = 'none';
+            initializeQuiz();
+            startTimer();
+            updateProgress();
+            setupSecurityMonitoring();
+        }
+
+        function setupSecurityMonitoring() {
+            // Fullscreen change detection (Section 6.1)
+            document.addEventListener('fullscreenchange', handleFullscreenChange);
+            document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+            document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+            document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+            // Tab switch detection (Section 6.2)
+            document.addEventListener('visibilitychange', handleVisibilityChange);
+
+            // Prevent context menu
+            document.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+            });
+
+            // Prevent keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                // Prevent F11, F5, Ctrl+R, Ctrl+Shift+R, Ctrl+W, Alt+F4
+                if (e.key === 'F11' || e.key === 'F5' || 
+                    (e.ctrlKey && (e.key === 'r' || e.key === 'R' || e.key === 'w' || e.key === 'W')) ||
+                    (e.altKey && e.key === 'F4')) {
+                    e.preventDefault();
+                    alert('This action is not allowed during the quiz.');
+                }
+            });
+        }
+
+        function handleFullscreenChange() {
+            if (!isFullscreen() && quizStarted) {
+                fullscreenWarnings++;
+                if (fullscreenWarnings >= 2) {
+                    alert('Full-screen mode exited multiple times. Auto-submitting quiz.');
+                    autoSubmitQuiz();
+                } else {
+                    alert('Warning: Full-screen mode was exited. Please return to full-screen mode immediately or your quiz will be auto-submitted.');
+                    setTimeout(() => {
+                        if (!isFullscreen()) {
+                            autoSubmitQuiz();
+                        }
+                    }, 5000); // Give 5 seconds to return to fullscreen
+                }
+            }
+        }
+
+        function handleVisibilityChange() {
+            if (document.hidden && quizStarted) {
+                tabSwitchWarnings++;
+                if (tabSwitchWarnings >= 1) {
+                    alert('Tab switch detected. Auto-submitting quiz.');
+                    autoSubmitQuiz();
+                }
+            }
+        }
+
+        function autoSubmitQuiz() {
+            clearInterval(timerInterval);
+            alert('Quiz auto-submitted due to security violation. You will be redirected to the dashboard.');
+            submitQuiz(true); // true indicates auto-submission
+        }
+
+        function initializeQuiz() {
+            // Set up option selection
+            document.querySelectorAll('.option-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const questionIndex = this.dataset.question;
+                    const option = this.dataset.option;
+                    
+                    // Remove previous selection for this question
+                    document.querySelectorAll(`[data-question="${questionIndex}"]`).forEach(opt => {
+                        opt.classList.remove('selected');
+                    });
+                    
+                    // Select this option
+                    this.classList.add('selected');
+                    answers[questionIndex] = option;
+                    updateProgress();
+                });
+            });
+
+            // Handle form submission
+            document.getElementById('quizForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                submitQuiz(false); // false indicates manual submission
+            });
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimer();
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    alert('Time is up! Submitting quiz automatically.');
+                    submitQuiz(true);
+                }
+            }, 1000);
+        }
+
+        function updateTimer() {
+            const hours = Math.floor(timeLeft / 3600);
+            const minutes = Math.floor((timeLeft % 3600) / 60);
+            const seconds = timeLeft % 60;
+            
+            document.getElementById('timeLeft').textContent = 
+                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Update progress bar
+            const progressPercent = ((3600 - timeLeft) / 3600) * 100;
+            document.getElementById('progressBar').style.width = progressPercent + '%';
+        }
+
+        function updateProgress() {
+            const answered = Object.keys(answers).length;
+            const total = quizData.questions.length;
+            document.getElementById('progress').textContent = `${answered}/${total}`;
+        }
+
+        async function submitQuiz(isAutoSubmit = false) {
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+
+            try {
+                // Calculate score
+                let correctAnswers = 0;
+                quizData.questions.forEach((question, index) => {
+                    if (answers[index] === question.correct_answer) {
+                        correctAnswers++;
+                    }
+                });
+                const score = Math.round((correctAnswers / quizData.questions.length) * 100);
+
+                // Submit to server
+                const response = await fetch(`/api/quiz/${quizData.id}/submit`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        answers: answers,
+                        score: score,
+                        auto_submitted: isAutoSubmit
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    if (isAutoSubmit) {
+                        alert(`Quiz auto-submitted due to security violation.\nYour Score: ${score}%\nCorrect Answers: ${correctAnswers}/${quizData.questions.length}`);
+                        window.location.href = '/dashboard';
+                    } else {
+                        showResults(score, correctAnswers, quizData.questions.length);
+                    }
+                } else {
+                    alert('Error submitting quiz: ' + result.message);
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Quiz';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error submitting quiz. Please try again.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Quiz';
+            }
+        }
+
+        function showResults(score, correct, total) {
+            const resultContent = document.getElementById('resultContent');
+            const scoreClass = score >= 80 ? 'text-success' : score >= 60 ? 'text-warning' : 'text-danger';
+            
+            resultContent.innerHTML = `
+                <div class="text-center mb-4">
+                    <h2 class="${scoreClass}">Your Score: ${score}%</h2>
+                    <p class="lead">You got ${correct} out of ${total} questions correct.</p>
+                </div>
+                
+                <div class="row text-center">
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <h3 class="text-success">${correct}</h3>
+                                <p>Correct Answers</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <h3 class="text-danger">${total - correct}</h3>
+                                <p>Incorrect Answers</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <h3 class="text-primary">${total}</h3>
+                                <p>Total Questions</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <h5>Question Review:</h5>
+                    ${quizData.questions.map((question, index) => {
+                        const userAnswer = answers[index] || 'Not answered';
+                        const isCorrect = userAnswer === question.correct_answer;
+                        return `
+                            <div class="border rounded p-3 mb-2 ${isCorrect ? 'bg-light' : 'bg-light'}">
+                                <strong>Q${index + 1}:</strong> ${question.question_text}<br>
+                                <small class="text-muted">Your answer: ${userAnswer}</small><br>
+                                <small class="text-success">Correct answer: ${question.correct_answer}</small>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+            
+            const resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+            resultModal.show();
+        }
+
+        // Prevent accidental navigation
+        window.addEventListener('beforeunload', function(e) {
+            if (Object.keys(answers).length > 0 && quizStarted) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+
+        // Handle fullscreen entry
+        document.addEventListener('fullscreenchange', function() {
+            if (isFullscreen() && !quizStarted) {
+                startQuiz();
+            }
+        });
+        document.addEventListener('webkitfullscreenchange', function() {
+            if (isFullscreen() && !quizStarted) {
+                startQuiz();
+            }
+        });
+        document.addEventListener('mozfullscreenchange', function() {
+            if (isFullscreen() && !quizStarted) {
+                startQuiz();
+            }
+        });
+        document.addEventListener('MSFullscreenChange', function() {
+            if (isFullscreen() && !quizStarted) {
+                startQuiz();
+            }
+        });
+    </script>
+</body>
+</html>
