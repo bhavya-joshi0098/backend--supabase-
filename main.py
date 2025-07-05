@@ -170,6 +170,7 @@ def api_student_results():
 
 @app.route("/api/student/quiz/<token>/start")
 @login_required
+@role_required(["student"])
 def api_student_start_quiz(token):
     """Start a quiz by token"""
     try:
