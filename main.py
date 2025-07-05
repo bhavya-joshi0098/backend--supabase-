@@ -147,6 +147,14 @@ def api_signup():
         return jsonify({"success": True, "message": message})
     return jsonify({"success": False, "message": message}), 400
 
+@app.route("/api/auth/logout", methods=["POST"])
+def api_logout():
+    """API endpoint for logout"""
+    try:
+        session.clear()
+        return jsonify({"success": True, "message": "Logged out successfully"})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
 # ---------- Student API Routes ----------
 @app.route("/api/student/available-quizzes")
 @login_required
