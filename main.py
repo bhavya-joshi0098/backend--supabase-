@@ -377,6 +377,16 @@ def api_admin_list_quizzes():
 def api_delete_quiz(quiz_id):
     """Delete a quiz"""
     try:
+        # Get the quiz to check ownership
+        quiz = Quiz.get_by_id(quiz_id)
+        if not quiz:
+            return jsonify({"success": False, "message": "Quiz not found"}), 404
+        
+        # Check if user is admin or the quiz creator
+        user = User.get_by_id(session["user_id"])
+        if user.role != 'admin' and quiz.created_by != user.id:
+            return jsonify({"success": False, "message": "You can only delete your own quizzes"}), 403
+        
         success = db.delete_quiz(quiz_id)
         if success:
             return jsonify({"success": True, "message": "Quiz deleted successfully"})
