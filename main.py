@@ -10,6 +10,7 @@ from auth import (
     create_teacher_by_admin
 )
 from database import db
+from utils import check_hash, gen_hash
 # main.py
 import json
 
@@ -304,6 +305,26 @@ def api_get_profile():
                 "role": user.role
             }
         })
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@app.route("/api/user/change-password", methods=["POST"])
+@login_required
+def api_change_password():
+    """Change current user's password"""
+    try:
+        data = request.get_json()
+        current_password = data.get("current_password")
+        new_password = data.get("new_password")
+        if not current_password or not new_password:
+            return jsonify({"success": False, "message": "Current and new password required."}), 400
+        user = User.get_by_id(session["user_id"])
+        if not check_hash(user.password, current_password):
+            return jsonify({"success": False, "message": "Current password is incorrect."}), 400
+        # Update password
+        hashed_new = gen_hash(new_password)
+        db.update_user_password(user.id, hashed_new)
+        return jsonify({"success": True, "message": "Password updated successfully."})
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
 
