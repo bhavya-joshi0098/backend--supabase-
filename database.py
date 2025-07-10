@@ -205,5 +205,14 @@ class DatabaseManager:
             print(f"Error getting admin user: {e}")
             return None
 
+    def update_user_password(self, user_id, new_hashed_password):
+        """Update user's password"""
+        try:
+            result = self.supabase.table('users').update({'password': new_hashed_password}).eq('id', user_id).execute()
+            return True
+        except Exception as e:
+            print(f"Error updating user password: {e}")
+            return False
+
 # Global database manager instance
 db = DatabaseManager() 
